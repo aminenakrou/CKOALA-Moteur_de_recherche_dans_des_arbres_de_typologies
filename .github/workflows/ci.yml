@@ -16,10 +16,16 @@ jobs:
       SRC_FOLDER: src
       TEST_FOLDER: tests
       BUILD_FOLDER: out
+      REPORT_FOLDER: report
+
       JUNIT_REMOTE: https://repo1.maven.org/maven2/org/junit/platform/junit-platform-console-standalone/1.9.3/junit-platform-console-standalone-1.9.3.jar
       JUNIT_LOCAL: lib/junit-platform-console-standalone.jar
+
       JACOCO_REMOTE: https://search.maven.org/remotecontent?filepath=org/jacoco/jacoco/0.8.13/jacoco-0.8.13.zip
       JACOCO_LOCAL_ZIP: lib/jacoco.zip
+
+      CHECKSTYLE_URL: https://github.com/checkstyle/checkstyle/releases/download/checkstyle-11.1.0/checkstyle-11.1.0-all.jar
+      PMD_URL: https://github.com/pmd/pmd/releases/download/pmd_releases%2F7.17.0/pmd-dist-7.17.0-bin.zip
 
     steps:
       - name: Checkout du dépôt
@@ -46,9 +52,9 @@ jobs:
           mkdir -p "$LIB_FOLDER/jacoco"
           unzip -o "$JACOCO_LOCAL_ZIP" -d "$LIB_FOLDER/jacoco"
 
-          curl -L https://github.com/checkstyle/checkstyle/releases/download/checkstyle-11.1.0/checkstyle-11.1.0-all.jar -o "$LIB_FOLDER/checkstyle-11.1.0-all.jar"
+          curl -L "$CHECKSTYLE_URL" -o "$LIB_FOLDER/checkstyle-11.1.0-all.jar"
 
-          curl -L https://github.com/pmd/pmd/releases/download/pmd_releases%2F7.17.0/pmd-dist-7.17.0-bin.zip -o pmd.zip
+          curl -L "$PMD_URL" -o pmd.zip
           unzip -o pmd.zip -d pmd/
 
       - name: Afficher la version Java
@@ -56,17 +62,16 @@ jobs:
           echo "Using Java version:"
           java -version
 
-      - name: Afficher le dossier lib
-        run: ls -R "$LIB_FOLDER"
-
       - name: Vérifier la structure du projet
         run: |
           echo "Contenu du dépôt :"
           ls -R
+          echo ""
           echo "Sources Java :"
-          find "$SRC_FOLDER" -type f -name "*.java"
+          find "$SRC_FOLDER" -type f -name "*.java" | sort
+          echo ""
           echo "Tests Java :"
-          find "$TEST_FOLDER" -type f -name "*.java"
+          find "$TEST_FOLDER" -type f -name "*.java" | sort
 
       - name: Checkstyle
         run: |
@@ -86,26 +91,96 @@ jobs:
           mkdir -p "$BUILD_FOLDER/tests"
           javac -cp "$JUNIT_LOCAL:$BUILD_FOLDER/classes" -d "$BUILD_FOLDER/tests" "$TEST_FOLDER"/*.java
 
-      - name: Exécuter les tests avec JaCoCo
+      - name: Exécuter les tests JUnit avec JaCoCo
+        id: junit_tests
         run: |
-          java -javaagent:lib/jacoco/lib/jacocoagent.jar=destfile=jacoco.exec \
+          mkdir -p junit-report
+          set +e
+          java \
+            -javaagent:lib/jacoco/lib/jacocoagent.jar=destfile=jacoco.exec \
             -cp "$JUNIT_LOCAL:$BUILD_FOLDER/classes:$BUILD_FOLDER/tests" \
-            org.junit.platform.console.ConsoleLauncher --scan-classpath
+            org.junit.platform.console.ConsoleLauncher \
+            --scan-classpath \
+            --details=summary \
+            --reports-dir=junit-report
+          EXIT_CODE=$?
+          echo "exit_code=$EXIT_CODE" >> "$GITHUB_OUTPUT"
+          exit 0
 
-      - name: Générer le rapport de couverture
+      - name: Publier le rapport JUnit dans GitHub
+        if: always()
+        uses: mikepenz/action-junit-report@v4
+        with:
+          report_paths: 'junit-report/**/*.xml'
+          fail_on_failure: false
+          detailed_summary: true
+
+      - name: Générer le rapport JaCoCo
+        if: always()
         run: |
-          java -jar lib/jacoco/lib/jacococli.jar report jacoco.exec --classfiles out/classes --sourcefiles src --html report
-          java -jar lib/jacoco/lib/jacococli.jar report jacoco.exec --classfiles out/classes --sourcefiles src --csv report.csv
-          awk -F, '{ instructions += $4 + $5; covered += $5 } END { print covered, "/", instructions, " instructions covered"; print 100*covered/instructions, "% covered" }' report.csv
+          mkdir -p "$REPORT_FOLDER"
 
-      - name: Uploader out/
+          java -jar lib/jacoco/lib/jacococli.jar report jacoco.exec \
+            --classfiles out/classes \
+            --sourcefiles src \
+            --html "$REPORT_FOLDER"
+
+          java -jar lib/jacoco/lib/jacococli.jar report jacoco.exec \
+            --classfiles out/classes \
+            --sourcefiles src \
+            --csv report.csv
+
+          TOTAL_PERCENT=$(awk -F, 'NR>1 { instructions += $4 + $5; covered += $5 } END { if (instructions>0) printf "%.2f", 100*covered/instructions; else print "0.00" }' report.csv)
+
+          echo "Couverture totale : $TOTAL_PERCENT%" > coverage-summary.txt
+
+          cat > "$REPORT_FOLDER/index-summary.html" <<EOF
+          <!DOCTYPE html>
+          <html lang="fr">
+          <head>
+            <meta charset="UTF-8">
+            <title>Résumé CI</title>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 40px; background: #f8f9fa; }
+              .card { max-width: 900px; background: white; padding: 28px; border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+              h1 { margin-top: 0; color: #222; }
+              .big { font-size: 2rem; font-weight: bold; color: #0a7; }
+              ul { line-height: 1.8; }
+              a { text-decoration: none; color: #0366d6; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <h1>Résumé du pipeline</h1>
+              <p class="big">Couverture totale : $TOTAL_PERCENT%</p>
+              <ul>
+                <li>Le rapport détaillé de couverture est disponible ici : <a href="./index.html">Rapport JaCoCo</a></li>
+                <li>Les résultats des tests JUnit sont disponibles dans l’onglet Actions</li>
+                <li>Les fichiers XML JUnit sont aussi fournis dans l’artifact <strong>junit-report</strong></li>
+              </ul>
+            </div>
+          </body>
+          </html>
+          EOF
+
+      - name: Uploader les classes compilées
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: build-output
           path: out/
           if-no-files-found: error
 
+      - name: Uploader le rapport JUnit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-report
+          path: junit-report/
+          if-no-files-found: warn
+
       - name: Uploader le rapport de couverture
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
@@ -113,4 +188,9 @@ jobs:
             jacoco.exec
             report/
             report.csv
+            coverage-summary.txt
           if-no-files-found: error
+
+      - name: Faire échouer le job si les tests JUnit ont échoué
+        if: steps.junit_tests.outputs.exit_code != '0'
+        run: exit 1
