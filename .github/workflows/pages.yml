@@ -1,0 +1,52 @@
+name: Deploy report to Pages
+
+on:
+  workflow_run:
+    workflows: ["Java CI"]
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Télécharger l'artifact du rapport
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-report
+          path: report-artifact
+
+      - name: Préparer le site
+        run: |
+          mkdir -p site
+          cp -r report-artifact/report/* site/ || true
+          touch site/.nojekyll
+
+      - name: Configurer Pages
+        uses: actions/configure-pages@v5
+
+      - name: Uploader Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./site
+
+      - name: Déployer sur GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
