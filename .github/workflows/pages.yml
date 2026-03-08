@@ -11,6 +11,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  actions: read
 
 concurrency:
   group: "pages"
@@ -20,29 +21,35 @@ jobs:
   deploy:
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+
     environment:
       name: github-pages
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Télécharger l'artifact du rapport
         uses: actions/download-artifact@v4
         with:
           name: coverage-report
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
           path: report-artifact
+
+      - name: Vérifier les fichiers téléchargés
+        run: |
+          echo "Contenu téléchargé :"
+          ls -R report-artifact
 
       - name: Préparer le site
         run: |
           mkdir -p site
-          cp -r report-artifact/report/* site/ || true
+          cp -r report-artifact/report/* site/
           touch site/.nojekyll
 
-      - name: Configurer Pages
+      - name: Configurer GitHub Pages
         uses: actions/configure-pages@v5
 
-      - name: Uploader Pages artifact
+      - name: Uploader l'artifact Pages
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./site
