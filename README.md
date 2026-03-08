@@ -1,6 +1,6 @@
 # 🌳 CKOALA
 
-Application Java de recherche dans des arbres de typologies à partir de caractéristiques observées, avec intégration continue, tests automatisés et rapport de couverture ().
+Application Java de recherche dans des arbres de typologies à partir de caractéristiques observées, avec intégration continue, tests automatisés et rapport de couverture (https://aminenakrou.github.io/CKOALA-Moteur_de_recherche_dans_des_arbres_de_typologies/).
 
 ## Auteur
 
