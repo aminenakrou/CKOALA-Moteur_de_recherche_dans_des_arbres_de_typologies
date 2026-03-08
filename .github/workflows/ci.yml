@@ -1,0 +1,116 @@
+name: Java CI
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+    branches: ["main", "master"]
+  workflow_dispatch:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    env:
+      LIB_FOLDER: lib
+      SRC_FOLDER: src
+      TEST_FOLDER: tests
+      BUILD_FOLDER: out
+      JUNIT_REMOTE: https://repo1.maven.org/maven2/org/junit/platform/junit-platform-console-standalone/1.9.3/junit-platform-console-standalone-1.9.3.jar
+      JUNIT_LOCAL: lib/junit-platform-console-standalone.jar
+      JACOCO_REMOTE: https://search.maven.org/remotecontent?filepath=org/jacoco/jacoco/0.8.13/jacoco-0.8.13.zip
+      JACOCO_LOCAL_ZIP: lib/jacoco.zip
+
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v4
+
+      - name: Installer Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Installer les outils système
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl unzip gawk
+
+      - name: Télécharger les dépendances
+        run: |
+          mkdir -p "$LIB_FOLDER"
+
+          curl -L "$JUNIT_REMOTE" -o "$JUNIT_LOCAL"
+          curl -L "$JACOCO_REMOTE" -o "$JACOCO_LOCAL_ZIP"
+
+          mkdir -p "$LIB_FOLDER/jacoco"
+          unzip -o "$JACOCO_LOCAL_ZIP" -d "$LIB_FOLDER/jacoco"
+
+          curl -L https://github.com/checkstyle/checkstyle/releases/download/checkstyle-11.1.0/checkstyle-11.1.0-all.jar -o "$LIB_FOLDER/checkstyle-11.1.0-all.jar"
+
+          curl -L https://github.com/pmd/pmd/releases/download/pmd_releases%2F7.17.0/pmd-dist-7.17.0-bin.zip -o pmd.zip
+          unzip -o pmd.zip -d pmd/
+
+      - name: Afficher la version Java
+        run: |
+          echo "Using Java version:"
+          java -version
+
+      - name: Afficher le dossier lib
+        run: ls -R "$LIB_FOLDER"
+
+      - name: Vérifier la structure du projet
+        run: |
+          echo "Contenu du dépôt :"
+          ls -R
+          echo "Sources Java :"
+          find "$SRC_FOLDER" -type f -name "*.java"
+          echo "Tests Java :"
+          find "$TEST_FOLDER" -type f -name "*.java"
+
+      - name: Checkstyle
+        run: |
+          java -jar "$LIB_FOLDER/checkstyle-11.1.0-all.jar" -c checkstyle.xml "$SRC_FOLDER/"
+
+      - name: Détection de duplications avec PMD CPD
+        run: |
+          pmd/pmd-bin-7.17.0/bin/pmd cpd --minimum-tokens 80 --dir "$SRC_FOLDER/"
+
+      - name: Compiler les sources
+        run: |
+          mkdir -p "$BUILD_FOLDER/classes"
+          javac -d "$BUILD_FOLDER/classes" "$SRC_FOLDER"/*.java
+
+      - name: Compiler les tests
+        run: |
+          mkdir -p "$BUILD_FOLDER/tests"
+          javac -cp "$JUNIT_LOCAL:$BUILD_FOLDER/classes" -d "$BUILD_FOLDER/tests" "$TEST_FOLDER"/*.java
+
+      - name: Exécuter les tests avec JaCoCo
+        run: |
+          java -javaagent:lib/jacoco/lib/jacocoagent.jar=destfile=jacoco.exec \
+            -cp "$JUNIT_LOCAL:$BUILD_FOLDER/classes:$BUILD_FOLDER/tests" \
+            org.junit.platform.console.ConsoleLauncher --scan-classpath
+
+      - name: Générer le rapport de couverture
+        run: |
+          java -jar lib/jacoco/lib/jacococli.jar report jacoco.exec --classfiles out/classes --sourcefiles src --html report
+          java -jar lib/jacoco/lib/jacococli.jar report jacoco.exec --classfiles out/classes --sourcefiles src --csv report.csv
+          awk -F, '{ instructions += $4 + $5; covered += $5 } END { print covered, "/", instructions, " instructions covered"; print 100*covered/instructions, "% covered" }' report.csv
+
+      - name: Uploader out/
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: out/
+          if-no-files-found: error
+
+      - name: Uploader le rapport de couverture
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            jacoco.exec
+            report/
+            report.csv
+          if-no-files-found: error
