@@ -27,7 +27,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      - name: Télécharger l'artifact coverage-report
+      - name: Télécharger coverage-report
         if: github.event_name == 'workflow_run'
         uses: actions/download-artifact@v4
         with:
@@ -37,7 +37,7 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
           path: coverage-artifact
 
-      - name: Télécharger l'artifact junit-report
+      - name: Télécharger junit-report
         if: github.event_name == 'workflow_run'
         uses: actions/download-artifact@v4
         with:
@@ -47,7 +47,7 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
           path: junit-artifact
 
-      - name: Vérifier les fichiers téléchargés
+      - name: Vérifier les artifacts
         if: github.event_name == 'workflow_run'
         run: |
           echo "=== coverage-artifact ==="
@@ -56,11 +56,12 @@ jobs:
           echo "=== junit-artifact ==="
           ls -R junit-artifact || true
 
-      - name: Checkout du dépôt pour exécution manuelle
+      - name: Checkout pour lancement manuel
         if: github.event_name == 'workflow_dispatch'
         uses: actions/checkout@v4
 
       - name: Préparer le site
+        shell: bash
         run: |
           mkdir -p site
           mkdir -p site/jacoco
@@ -68,84 +69,68 @@ jobs:
 
           if [ "${{ github.event_name }}" = "workflow_run" ]; then
             if [ -d coverage-artifact/report ]; then
-              cp -r coverage-artifact/report/* site/jacoco/
+              cp -r coverage-artifact/report/. site/jacoco/
             fi
-
             if [ -d junit-artifact ]; then
-              cp -r junit-artifact/* site/junit/ || true
+              cp -r junit-artifact/. site/junit/ || true
             fi
           else
             if [ -d report ]; then
-              cp -r report/* site/jacoco/
+              cp -r report/. site/jacoco/
             fi
             if [ -d junit-report ]; then
-              cp -r junit-report/* site/junit/
+              cp -r junit-report/. site/junit/ || true
             fi
           fi
 
           touch site/.nojekyll
 
-          JUNIT_XML_COUNT=$(find site/junit -type f -name "*.xml" | wc -l | tr -d ' ')
-          TOTAL_TESTS=$(grep -h -o 'tests="[0-9]*"' site/junit/*.xml 2>/dev/null | sed 's/[^0-9]//g' | awk '{s+=$1} END{print s+0}')
-          TOTAL_FAILURES=$(grep -h -o 'failures="[0-9]*"' site/junit/*.xml 2>/dev/null | sed 's/[^0-9]//g' | awk '{s+=$1} END{print s+0}')
-          TOTAL_ERRORS=$(grep -h -o 'errors="[0-9]*"' site/junit/*.xml 2>/dev/null | sed 's/[^0-9]//g' | awk '{s+=$1} END{print s+0}')
-          TOTAL_SKIPPED=$(grep -h -o 'skipped="[0-9]*"' site/junit/*.xml 2>/dev/null | sed 's/[^0-9]//g' | awk '{s+=$1} END{print s+0}')
+          {
+            echo '<!DOCTYPE html>'
+            echo '<html lang="fr">'
+            echo '<head>'
+            echo '  <meta charset="UTF-8">'
+            echo '  <meta name="viewport" content="width=device-width, initial-scale=1.0">'
+            echo '  <title>Rapports CI</title>'
+            echo '  <style>'
+            echo '    body { font-family: Arial, sans-serif; margin: 40px; background: #f7f8fa; color: #222; }'
+            echo '    .container { max-width: 900px; margin: auto; }'
+            echo '    .card { background: white; border-radius: 14px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }'
+            echo '    h1, h2 { margin-top: 0; }'
+            echo '    a { color: #0366d6; text-decoration: none; }'
+            echo '    ul { line-height: 1.8; }'
+            echo '  </style>'
+            echo '</head>'
+            echo '<body>'
+            echo '  <div class="container">'
+            echo '    <div class="card">'
+            echo '      <h1>Rapports du pipeline</h1>'
+            echo '      <p>Cette page regroupe le rapport de couverture JaCoCo et les résultats JUnit générés par GitHub Actions.</p>'
+            echo '    </div>'
+            echo '    <div class="card">'
+            echo '      <h2>Rapport JaCoCo</h2>'
+            echo '      <p><a href="./jacoco/index.html">Ouvrir le rapport de couverture</a></p>'
+            echo '      <p><a href="./jacoco/index-summary.html">Ouvrir le résumé de couverture</a></p>'
+            echo '    </div>'
+            echo '    <div class="card">'
+            echo '      <h2>Résultats JUnit</h2>'
+            echo '      <p>Les résultats détaillés restent mieux visibles dans l’onglet Actions de GitHub, mais les fichiers XML publiés sont listés ci-dessous.</p>'
+            echo '      <ul>'
+          } > site/index.html
 
-          cat > site/index.html <<EOF
-          <!DOCTYPE html>
-          <html lang="fr">
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Rapports CI</title>
-            <style>
-              body { font-family: Arial, sans-serif; margin: 40px; background: #f7f8fa; color: #222; }
-              .container { max-width: 900px; margin: auto; }
-              .card { background: white; border-radius: 14px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
-              h1, h2 { margin-top: 0; }
-              a { color: #0366d6; text-decoration: none; }
-              ul { line-height: 1.8; }
-              .ok { color: #0a7; font-weight: bold; }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <div class="card">
-                <h1>Rapports du pipeline</h1>
-                <p>Cette page regroupe le rapport de couverture JaCoCo et les fichiers de résultats JUnit.</p>
-              </div>
-
-              <div class="card">
-                <h2>Couverture JaCoCo</h2>
-                <p><a href="./jacoco/index.html">Ouvrir le rapport JaCoCo</a></p>
-              </div>
-
-              <div class="card">
-                <h2>Résultats JUnit</h2>
-                <p class="ok">Fichiers XML détectés : ${JUNIT_XML_COUNT}</p>
-                <ul>
-                  <li>Tests : ${TOTAL_TESTS}</li>
-                  <li>Échecs : ${TOTAL_FAILURES}</li>
-                  <li>Erreurs : ${TOTAL_ERRORS}</li>
-                  <li>Ignorés : ${TOTAL_SKIPPED}</li>
-                </ul>
-                <p>Fichiers détaillés :</p>
-                <ul>
-          EOF
-
-          find site/junit -type f -name "*.xml" | sort | while read -r file; do
-            rel=\${file#site/}
-            base=\$(basename "\$file")
-            echo "                  <li><a href=\"./\${rel}\">\${base}</a></li>" >> site/index.html
+          find site/junit -type f -name "*.xml" | sort | while IFS= read -r file; do
+            rel="${file#site/}"
+            base="$(basename "$file")"
+            echo "        <li><a href=\"./$rel\">$base</a></li>" >> site/index.html
           done
 
-          cat >> site/index.html <<EOF
-                </ul>
-              </div>
-            </div>
-          </body>
-          </html>
-          EOF
+          {
+            echo '      </ul>'
+            echo '    </div>'
+            echo '  </div>'
+            echo '</body>'
+            echo '</html>'
+          } >> site/index.html
 
       - name: Configurer GitHub Pages
         uses: actions/configure-pages@v5
