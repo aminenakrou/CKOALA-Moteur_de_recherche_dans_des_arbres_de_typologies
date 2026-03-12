@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CKOALA — Classification par Typologies</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,700;0,900;1,400&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#090b08;--bg1:#0f120e;--bg2:#151a14;--bg3:#1c221a;--border:rgba(255,255,255,0.06);--border-s:rgba(255,255,255,0.1);--t0:#f0efe8;--t1:#a0a890;--t2:#687860;--t3:#3e4838;--accent:#6abf5e;--accent2:#4a9f42;--accent-s:rgba(106,191,94,0.1);--accent-g:rgba(106,191,94,0.2);--amber:#e8b840;--amber-s:rgba(232,184,64,0.1);--sky:#58a0d8;--sky-s:rgba(88,160,216,0.1);--rose:#d86868;--rose-s:rgba(216,104,104,0.1);--r:10px;--tr:cubic-bezier(0.16,1,0.3,1);}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased;}
+body{background:var(--bg);color:var(--t0);font-family:'Instrument Sans',sans-serif;line-height:1.7;overflow-x:hidden;}
+::selection{background:var(--accent);color:var(--bg);}
+body::after{content:'';position:fixed;inset:0;opacity:0.02;background:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");pointer-events:none;z-index:10000;}
+
+/* ═══ NAV ═══ */
+nav{position:fixed;top:0;width:100%;z-index:1000;padding:0 2.5rem;height:52px;display:flex;align-items:center;backdrop-filter:blur(16px);background:rgba(9,11,8,0.8);border-bottom:1px solid var(--border);transition:all 0.3s;}
+.nav-in{max-width:1100px;width:100%;margin:0 auto;display:flex;justify-content:space-between;align-items:center;}
+.nav-logo{font-family:'Fraunces',serif;font-size:1rem;font-weight:900;color:var(--accent);}
+.nav-logo span{color:var(--t2);font-weight:400;font-family:'Instrument Sans',sans-serif;font-size:0.8rem;}
+.nav-links{list-style:none;display:flex;gap:1.8rem;}
+.nav-links a{color:var(--t2);text-decoration:none;font-size:0.78rem;font-weight:500;transition:color 0.2s;}
+.nav-links a:hover{color:var(--t0);}
+
+/* ═══ SCROLL BAR ═══ */
+.scroll-bar{position:fixed;top:0;left:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--sky));z-index:10001;width:0%;}
+
+/* ═══ HERO ═══ */
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;position:relative;padding:6rem 2.5rem;overflow:hidden;}
+.hero-bg{position:absolute;inset:0;}
+.hero-bg .orb{position:absolute;border-radius:50%;filter:blur(100px);animation:orb 15s ease-in-out infinite;}
+.orb-1{width:500px;height:500px;background:radial-gradient(circle,rgba(106,191,94,0.06),transparent);top:-10%;left:-5%;}
+.orb-2{width:350px;height:350px;background:radial-gradient(circle,rgba(88,160,216,0.05),transparent);bottom:0;right:-5%;animation-delay:-5s!important;}
+@keyframes orb{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(30px,-20px) scale(1.08);}}
+
+.hero-content{position:relative;z-index:2;max-width:800px;text-align:center;}
+.hero-badge{display:inline-flex;align-items:center;gap:0.5rem;font-family:'JetBrains Mono',monospace;font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--t2);border:1px solid var(--border-s);border-radius:100px;padding:0.35rem 1rem;margin-bottom:2rem;opacity:0;animation:fu 0.6s 0.2s forwards;}
+@keyframes fu{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+.hero h1{font-family:'Fraunces',serif;font-size:clamp(2.8rem,5.5vw,4.2rem);font-weight:900;line-height:1.08;letter-spacing:-0.03em;margin-bottom:1.2rem;}
+.hero h1 .char{display:inline-block;opacity:0;transform:translateY(100%);animation:ci 0.5s forwards;}
+@keyframes ci{to{opacity:1;transform:translateY(0);}}
+.hero h1 em{font-style:italic;font-weight:400;color:var(--accent);}
+.hero h1 em .char{color:var(--accent);}
+.hero-desc{font-size:1rem;color:var(--t1);max-width:520px;margin:0 auto 2.5rem;font-weight:300;opacity:0;animation:fu 0.6s 1.2s forwards;}
+.hero-actions{display:flex;gap:0.8rem;justify-content:center;flex-wrap:wrap;opacity:0;animation:fu 0.6s 1.5s forwards;}
+.btn{display:inline-flex;align-items:center;gap:0.5rem;padding:0.7rem 1.6rem;border-radius:8px;font-size:0.82rem;font-weight:600;text-decoration:none;font-family:'Instrument Sans',sans-serif;border:none;transition:all 0.3s;cursor:pointer;}
+.btn-p{background:var(--accent);color:var(--bg);}
+.btn-p:hover{background:var(--accent2);transform:translateY(-1px);box-shadow:0 8px 30px var(--accent-g);}
+.btn-g{color:var(--t1);border:1px solid var(--border-s);background:transparent;}
+.btn-g:hover{color:var(--t0);border-color:var(--accent);}
+
+.hero-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:2px;margin-top:3rem;border-radius:10px;overflow:hidden;opacity:0;animation:fu 0.6s 1.8s forwards;}
+.hs-cell{background:var(--bg1);padding:1.2rem;text-align:center;transition:background 0.3s;}
+.hs-cell:hover{background:var(--bg2);}
+.hs-v{font-family:'JetBrains Mono',monospace;font-size:1.3rem;font-weight:700;color:var(--t0);}
+.hs-l{font-size:0.55rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--t3);margin-top:0.15rem;}
+
+/* ═══ SECTIONS ═══ */
+section{max-width:1100px;margin:0 auto;padding:6rem 2.5rem;}
+.divider{max-width:1100px;margin:0 auto;height:1px;background:linear-gradient(90deg,transparent,var(--border-s),transparent);position:relative;overflow:hidden;}
+.divider::after{content:'';position:absolute;top:0;left:-40%;width:40%;height:100%;background:linear-gradient(90deg,transparent,var(--accent),transparent);animation:dg 6s infinite;}
+@keyframes dg{to{left:140%;}}
+.sn{font-family:'JetBrains Mono',monospace;font-size:0.58rem;text-transform:uppercase;letter-spacing:0.14em;color:var(--accent);margin-bottom:0.8rem;}
+.st{font-family:'Fraunces',serif;font-size:clamp(1.6rem,3vw,2.2rem);font-weight:700;margin-bottom:0.5rem;line-height:1.2;}
+.st em{font-weight:400;font-style:italic;color:var(--accent);}
+.sd{color:var(--t1);font-size:0.88rem;max-width:500px;font-weight:300;margin-bottom:2.5rem;}
+.rv{opacity:0;transform:translateY(28px);transition:opacity 0.7s var(--tr),transform 0.7s var(--tr);}
+.rv.vis{opacity:1;transform:none;}
+.rv.d1{transition-delay:0.1s;}.rv.d2{transition-delay:0.2s;}.rv.d3{transition-delay:0.3s;}
+
+/* ═══ INTERACTIVE TREE ═══ */
+.tree-wrap{width:100%;background:var(--bg1);border:1px solid var(--border);border-radius:14px;padding:1.5rem;position:relative;overflow:hidden;}
+.tree-tabs{display:flex;gap:0.3rem;margin-bottom:1.2rem;}
+.tree-tab{padding:0.5rem 1rem;border-radius:8px;font-size:0.75rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--t2);transition:all 0.2s;font-family:'Instrument Sans',sans-serif;}
+.tree-tab.active{background:var(--accent);color:var(--bg);border-color:var(--accent);}
+.tree-tab:hover:not(.active){border-color:var(--accent);color:var(--accent);}
+#treeCanvas{width:100%;border-radius:8px;}
+.tree-info{position:absolute;bottom:1rem;right:1rem;font-family:'JetBrains Mono',monospace;font-size:0.62rem;color:var(--t3);background:rgba(9,11,8,0.85);padding:0.4rem 0.7rem;border-radius:6px;backdrop-filter:blur(8px);}
+
+/* ═══ CLASSIFIER DEMO ═══ */
+.demo-wrap{background:var(--bg1);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-top:2rem;}
+.demo-head{padding:1rem 1.5rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.demo-head h3{font-size:0.85rem;font-weight:700;}
+.demo-badge{font-family:'JetBrains Mono',monospace;font-size:0.6rem;padding:0.15rem 0.5rem;border-radius:4px;background:var(--accent-s);color:var(--accent);}
+.demo-body{padding:1.5rem;display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;}
+.demo-inputs{display:flex;flex-direction:column;gap:0.8rem;}
+.demo-field label{display:block;font-size:0.72rem;color:var(--t2);margin-bottom:0.3rem;font-weight:500;}
+.demo-field select,.demo-field input{width:100%;padding:0.5rem 0.7rem;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);color:var(--t0);font-family:'Instrument Sans',sans-serif;font-size:0.82rem;outline:none;transition:border-color 0.2s;}
+.demo-field select:focus,.demo-field input:focus{border-color:var(--accent);}
+.demo-field select option{background:var(--bg2);}
+.demo-btn{width:100%;padding:0.6rem;border:none;border-radius:var(--r);background:var(--accent);color:var(--bg);font-family:'Instrument Sans',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.3s;margin-top:0.4rem;}
+.demo-btn:hover{background:var(--accent2);box-shadow:0 4px 20px var(--accent-g);}
+.demo-result{background:var(--bg2);border-radius:var(--r);padding:1.2rem;min-height:200px;}
+.demo-result h4{font-size:0.78rem;font-weight:600;color:var(--t2);margin-bottom:0.8rem;}
+.demo-result-item{padding:0.5rem 0.7rem;margin-bottom:0.4rem;border-radius:6px;font-size:0.78rem;font-weight:500;display:flex;align-items:center;gap:0.5rem;animation:fu 0.3s ease;}
+.dri-match{background:var(--accent-s);color:var(--accent);border:1px solid rgba(106,191,94,0.15);}
+.dri-no{background:var(--rose-s);color:var(--rose);}
+.dri-icon{font-size:1rem;}
+
+/* ═══ CARDS ═══ */
+.card-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem;}
+.c-card{background:var(--bg1);border:1px solid var(--border);border-radius:12px;padding:1.8rem 1.4rem;transition:all 0.3s;position:relative;overflow:hidden;}
+.c-card:hover{border-color:rgba(106,191,94,0.15);box-shadow:0 16px 48px rgba(0,0,0,0.25);}
+.c-card .ci{font-size:1.6rem;margin-bottom:0.8rem;display:inline-block;transition:transform 0.3s;}
+.c-card:hover .ci{transform:scale(1.15) rotate(-5deg);}
+.c-card h3{font-size:0.88rem;font-weight:700;margin-bottom:0.3rem;}
+.c-card p{font-size:0.75rem;color:var(--t1);font-weight:300;line-height:1.7;}
+
+/* ═══ TABLE ═══ */
+.r-panel{background:var(--bg1);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin:1.2rem 0;}
+.r-head{padding:0.8rem 1.2rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.r-head h3{font-size:0.8rem;font-weight:600;}
+.r-badge{font-family:'JetBrains Mono',monospace;font-size:0.58rem;padding:0.15rem 0.5rem;border-radius:4px;}
+.rb-green{background:var(--accent-s);color:var(--accent);}
+.rb-amber{background:var(--amber-s);color:var(--amber);}
+.rt{width:100%;border-collapse:collapse;font-size:0.75rem;}
+.rt thead th{padding:0.5rem 1rem;text-align:left;font-weight:500;color:var(--t3);font-size:0.6rem;text-transform:uppercase;letter-spacing:0.08em;border-bottom:1px solid var(--border);}
+.rt tbody tr{transition:all 0.2s;}
+.rt tbody tr:hover{background:rgba(106,191,94,0.02);}
+.rt td{padding:0.45rem 1rem;border-bottom:1px solid var(--border);}
+.rt .nm{font-weight:600;}
+.rt .pass{color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:0.7rem;}
+.rt .fail{color:var(--rose);}
+
+/* ═══ CODE ═══ */
+.code-wrap{background:#060806;border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.code-top{padding:0.6rem 1rem;background:rgba(15,18,14,0.9);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.code-fn{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--t3);display:flex;align-items:center;gap:0.4rem;}
+.code-dt{width:8px;height:8px;border-radius:50%;}
+.copy-btn{background:transparent;border:1px solid var(--border);color:var(--t3);padding:0.2rem 0.6rem;border-radius:4px;font-size:0.6rem;font-family:'JetBrains Mono',monospace;cursor:pointer;transition:all 0.2s;}
+.copy-btn:hover{border-color:var(--accent);color:var(--accent);}
+.code-scroll{padding:1rem 1.2rem;overflow:auto;max-height:420px;}
+.code-scroll::-webkit-scrollbar{width:4px;}
+.code-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.code-scroll pre{font-family:'JetBrains Mono',monospace;font-size:0.7rem;line-height:1.85;color:#a0a890;}
+.kw{color:#c792ea;}.fn{color:#82aaff;}.str{color:#c3e88d;}.cm{color:#3a4038;font-style:italic;}.num{color:#e8b840;}.tp{color:#ffcb6b;}.an{color:#82aaff;}
+
+/* ═══ PIPELINE ═══ */
+.pipe{display:flex;align-items:center;gap:0;margin:2rem 0;overflow-x:auto;padding-bottom:0.5rem;}
+.pipe-step{display:flex;flex-direction:column;align-items:center;min-width:110px;text-align:center;position:relative;}
+.pipe-dot{width:48px;height:48px;border-radius:50%;background:var(--bg1);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:1rem;margin-bottom:0.6rem;transition:all 0.3s;}
+.pipe-step:hover .pipe-dot{border-color:var(--accent);box-shadow:0 0 20px var(--accent-s);}
+.pipe-lbl{font-size:0.7rem;font-weight:600;}
+.pipe-sub{font-size:0.55rem;color:var(--t3);font-family:'JetBrains Mono',monospace;}
+.pipe-arrow{color:var(--t3);font-size:1.2rem;margin:0 0.2rem;margin-bottom:1.5rem;}
+
+/* ═══ CALLOUT ═══ */
+.callout{background:var(--bg1);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:0 var(--r) var(--r) 0;padding:1.2rem 1.4rem;margin:1.2rem 0;transition:all 0.3s;}
+.callout:hover{background:var(--bg2);}
+.callout-t{font-size:0.82rem;font-weight:700;margin-bottom:0.2rem;}
+.callout p{font-size:0.78rem;color:var(--t1);font-weight:300;}
+.callout strong{color:var(--t0);}
+
+/* ═══ TABS ═══ */
+.tab-row{display:flex;border-bottom:1px solid var(--border);margin-bottom:1.5rem;}
+.tab-btn{padding:0.6rem 1.2rem;font-size:0.75rem;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--t3);font-family:'Instrument Sans',sans-serif;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.2s;}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+.tab-panel{display:none;}.tab-panel.active{display:block;animation:fu 0.3s ease;}
+
+/* ═══ CONCLUSION ═══ */
+.conc-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:2px;background:var(--border);border-radius:12px;overflow:hidden;}
+.conc-card{background:var(--bg1);padding:1.8rem;transition:background 0.3s;}
+.conc-card:hover{background:var(--bg2);}
+.conc-card .cci{font-size:1.2rem;margin-bottom:0.8rem;}
+.conc-card h3{font-size:0.85rem;font-weight:700;margin-bottom:0.2rem;}
+.conc-card p{font-size:0.75rem;color:var(--t1);font-weight:300;line-height:1.7;}
+
+/* ═══ AUTHORS ═══ */
+.authors{display:flex;align-items:center;justify-content:space-between;margin-top:2.5rem;padding:1.5rem;background:var(--bg1);border:1px solid var(--border);border-radius:12px;}
+.auth-left{display:flex;gap:2rem;}
+.a-p{display:flex;align-items:center;gap:0.7rem;}
+.a-av{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.78rem;color:var(--bg);transition:transform 0.3s;}
+.a-p:hover .a-av{transform:scale(1.1) rotate(5deg);}
+.a-p:nth-child(1) .a-av{background:var(--accent);}
+.a-p:nth-child(2) .a-av{background:var(--sky);}
+.a-nm{font-weight:600;font-size:0.85rem;}
+.a-rl{font-size:0.62rem;color:var(--t3);}
+.auth-right{text-align:right;font-size:0.75rem;color:var(--t1);}
+.auth-right strong{color:var(--t0);}
+
+footer{border-top:1px solid var(--border);padding:2rem;text-align:center;font-size:0.62rem;color:var(--t3);}
+footer a{color:var(--accent);text-decoration:none;}
+
+@media(max-width:800px){.hero-stats{grid-template-columns:1fr 1fr;}.card-grid{grid-template-columns:1fr;}.demo-body{grid-template-columns:1fr;}.conc-grid{grid-template-columns:1fr;}.nav-links{display:none;}.authors{flex-direction:column;gap:1rem;text-align:center;}.auth-left{flex-direction:column;align-items:center;}.auth-right{text-align:center;}}
+</style>
+</head>
+<body>
+
+<div class="scroll-bar" id="scrollBar"></div>
+
+<nav><div class="nav-in"><div class="nav-logo">CKOALA <span>· Typologies</span></div><ul class="nav-links"><li><a href="#archi">Architecture</a></li><li><a href="#tree">Arbre</a></li><li><a href="#demo">Démo</a></li><li><a href="#tests">Tests</a></li><li><a href="#code">Code</a></li></ul></div></nav>
+
+<!-- ═══ HERO ═══ -->
+<header class="hero">
+<div class="hero-bg"><div class="orb orb-1"></div><div class="orb orb-2"></div></div>
+<div class="hero-content">
+<div class="hero-badge">🌿 Polytech Lille · IS3 · Java 17</div>
+<h1 id="heroTitle">Classification par<br><em>Typologies</em></h1>
+<p class="hero-desc">Application Java pour la recherche dans des arbres de catégories hiérarchiques basée sur les caractéristiques — Domaines, Intervalles, Ensembles.</p>
+<div class="hero-actions">
+<a href="#demo" class="btn btn-p"><span>🔍 Tester la classification</span></a>
+<a href="#archi" class="btn btn-g"><span>Architecture →</span></a>
+</div>
+<div class="hero-stats">
+<div class="hs-cell"><div class="hs-v">8</div><div class="hs-l">Classes Java</div></div>
+<div class="hs-cell"><div class="hs-v">3</div><div class="hs-l">Suites de tests</div></div>
+<div class="hs-cell"><div class="hs-v">2</div><div class="hs-l">Typologies XML</div></div>
+<div class="hs-cell"><div class="hs-v">7</div><div class="hs-l">Étapes CI/CD</div></div>
+</div>
+</div>
+</header>
+<div class="divider"></div>
+
+<!-- ═══ ARCHITECTURE ═══ -->
+<section id="archi">
+<div class="rv"><div class="sn">01 — Architecture</div><div class="st">Conception <em>objet</em></div><div class="sd">Un système extensible basé sur l'interface Domaine, le pattern Composite pour les catégories, et un parseur XML intégré.</div></div>
+
+<div class="card-grid rv d1">
+<div class="c-card"><div class="ci">🌳</div><h3>Categorie</h3><p>Nœud de l'arbre typologique. Possède un nom, une mère, des filles, et un dictionnaire de caractéristiques. Méthodes estCompatible() et validerHierarchie().</p></div>
+<div class="c-card"><div class="ci">📐</div><h3>Domaine (interface)</h3><p>Contrat pour les domaines de valeurs. Deux méthodes : contient(valeur) et estInclusDans(domaineMère). Implémenté par Intervalle et Ensemble.</p></div>
+<div class="c-card"><div class="ci">📏</div><h3>Intervalle</h3><p>Domaine numérique [inf, sup]. Contient un nombre si inf ≤ val ≤ sup. Inclusion vérifiée par comparaison des bornes.</p></div>
+<div class="c-card"><div class="ci">📋</div><h3>Ensemble</h3><p>Domaine discret {e₁, e₂, …}. Contient une chaîne si elle est dans le Set. Inclusion vérifiée par containsAll().</p></div>
+<div class="c-card"><div class="ci">👁️</div><h3>Observation</h3><p>Map&lt;String, Object&gt; associant chaque caractéristique à sa valeur observée. Sert d'entrée pour la classification.</p></div>
+<div class="c-card"><div class="ci">🗂️</div><h3>Typologie</h3><p>Charge un fichier XML, construit l'arbre, valide la hiérarchie, et lance la classification récursive depuis la racine.</p></div>
+</div>
+
+<div class="pipe rv d2">
+<div class="pipe-step"><div class="pipe-dot">📥</div><div class="pipe-lbl">XML</div><div class="pipe-sub">arbres.xml</div></div>
+<div class="pipe-arrow">→</div>
+<div class="pipe-step"><div class="pipe-dot">🏗️</div><div class="pipe-lbl">Parsing</div><div class="pipe-sub">DOM parser</div></div>
+<div class="pipe-arrow">→</div>
+<div class="pipe-step"><div class="pipe-dot">🌳</div><div class="pipe-lbl">Arbre</div><div class="pipe-sub">catégories</div></div>
+<div class="pipe-arrow">→</div>
+<div class="pipe-step"><div class="pipe-dot">✅</div><div class="pipe-lbl">Validation</div><div class="pipe-sub">hiérarchie</div></div>
+<div class="pipe-arrow">→</div>
+<div class="pipe-step"><div class="pipe-dot">🔍</div><div class="pipe-lbl">Classification</div><div class="pipe-sub">récursive</div></div>
+</div>
+
+<div class="callout rv d3"><div class="callout-t">🔑 Contrainte d'inclusion</div><p>Chaque catégorie fille <strong>doit avoir ses domaines inclus</strong> dans ceux de sa mère. Exemple : si « arbre » a taille=[5,40], alors « épicéa » peut avoir taille=[20,30] mais <strong>pas</strong> taille=[20,50].</p></div>
+</section>
+<div class="divider"></div>
+
+<!-- ═══ INTERACTIVE TREE ═══ -->
+<section id="tree">
+<div class="rv"><div class="sn">02 — Arbre interactif</div><div class="st">Typologies <em>visuelles</em></div><div class="sd">Explorez les deux fichiers XML du projet : arbres et nuages. Survolez un nœud pour voir ses caractéristiques.</div></div>
+
+<div class="tree-wrap rv d1">
+<div class="tree-tabs">
+<button class="tree-tab active" onclick="switchTree('arbres')">🌲 Arbres</button>
+<button class="tree-tab" onclick="switchTree('nuages')">☁️ Nuages</button>
+</div>
+<canvas id="treeCanvas" height="400"></canvas>
+<div class="tree-info">Survolez un nœud · Cliquez pour détails</div>
+</div>
+</section>
+<div class="divider"></div>
+
+<!-- ═══ CLASSIFICATION DEMO ═══ -->
+<section id="demo">
+<div class="rv"><div class="sn">03 — Démo interactive</div><div class="st">Classifiez en <em>temps réel</em></div><div class="sd">Entrez les caractéristiques d'un arbre et voyez instantanément quelles catégories correspondent.</div></div>
+
+<div class="demo-wrap rv d1">
+<div class="demo-head"><h3>🔍 Classificateur d'arbres</h3><span class="demo-badge">arbres.xml</span></div>
+<div class="demo-body">
+<div class="demo-inputs">
+<div class="demo-field"><label>Forme</label><select id="dForme"><option value="conique">conique</option><option value="arrondi">arrondi</option><option value="retombant">retombant</option><option value="colonnaire">colonnaire</option></select></div>
+<div class="demo-field"><label>Taille (mètres)</label><input type="number" id="dTaille" value="25" min="0" max="100" step="1"></div>
+<div class="demo-field"><label>Taille du tronc (mètres)</label><input type="number" id="dTronc" value="1.0" min="0" max="5" step="0.1"></div>
+<div class="demo-field"><label>Écorce</label><select id="dEcorce"><option value="ecailles">ecailles</option><option value="fissuree">fissuree</option><option value="lisse">lisse</option><option value="liege">liege</option></select></div>
+<div class="demo-field"><label>Aiguilles (si conifère)</label><select id="dAiguilles"><option value="">— aucun —</option><option value="brosse">brosse</option><option value="plate">plate</option><option value="touffes">touffes</option></select></div>
+<button class="demo-btn" onclick="runClassifier()">🔍 Classifier</button>
+</div>
+<div class="demo-result" id="demoResult">
+<h4>Résultats</h4>
+<div style="color:var(--t3);font-size:0.78rem;padding:2rem 0;text-align:center;">Remplissez les champs et cliquez « Classifier »</div>
+</div>
+</div>
+</div>
+</section>
+<div class="divider"></div>
+
+<!-- ═══ TESTS ═══ -->
+<section id="tests">
+<div class="rv"><div class="sn">04 — Tests & Qualité</div><div class="st">Validation <em>complète</em></div><div class="sd">3 suites de tests JUnit 5, analyse de couverture JaCoCo, linting Checkstyle et détection de code dupliqué PMD.</div></div>
+
+<div class="r-panel rv d1">
+<div class="r-head"><h3>Résultats des tests JUnit</h3><span class="r-badge rb-green">12/12 PASS</span></div>
+<table class="rt"><thead><tr><th>Suite</th><th>Test</th><th>Statut</th></tr></thead><tbody>
+<tr><td class="nm">DomaineTest</td><td>testIntervalleContient</td><td class="pass">✓ PASS</td></tr>
+<tr><td class="nm">DomaineTest</td><td>testEnsembleContient</td><td class="pass">✓ PASS</td></tr>
+<tr><td class="nm">DomaineTest</td><td>testIntervalleInclusionStricte</td><td class="pass">✓ PASS</td></tr>
+<tr><td class="nm">DomaineTest</td><td>testEnsembleInclusionStricte</td><td class="pass">✓ PASS</td></tr>
+<tr><td class="nm">CategorieTest</td><td>testValiderHierarchie_Invalide</td><td class="pass">✓ PASS</td></tr>
+<tr><td class="nm">CategorieTest</td><td>testValiderHierarchie_SansRedefinition</td><td class="pass">✓ PASS</td></tr>
+<tr><td class="nm">CategorieTest</td><td>testValiderHierarchie_Racine</td><td class="pass">✓ PASS</td></tr>
+<tr><td class="nm">CategorieTest</td><td>testValiderHierarchie_Valide</td><td class="pass">✓ PASS</td></tr>
+<tr><td class="nm">TypologieTest</td><td>testChargementXML_Arbres</td><td class="pass">✓ PASS</td></tr>
+<tr><td class="nm">TypologieTest</td><td>testValidationHierarchieValide</td><td class="pass">✓ PASS</td></tr>
+<tr><td class="nm">TypologieTest</td><td>testClassifier_Epicea_Valide</td><td class="pass">✓ PASS</td></tr>
+<tr><td class="nm">TypologieTest</td><td>testClassifier_ConifereMaisPasEpicea</td><td class="pass">✓ PASS</td></tr>
+</tbody></table>
+</div>
+
+<div class="callout rv d2"><div class="callout-t">📊 Couverture JaCoCo</div><p>La couverture du code est mesurée automatiquement via le pipeline CI/CD GitLab. Rapport HTML et CSV générés à chaque push.</p></div>
+
+<div class="card-grid rv d3" style="grid-template-columns:repeat(4,1fr);">
+<div class="c-card" style="padding:1.2rem;text-align:center;"><div class="ci">✅</div><h3>12/12</h3><p>Tests passés</p></div>
+<div class="c-card" style="padding:1.2rem;text-align:center;"><div class="ci">📏</div><h3>Checkstyle</h3><p>Lint OK</p></div>
+<div class="c-card" style="padding:1.2rem;text-align:center;"><div class="ci">🔄</div><h3>PMD CPD</h3><p>0 duplicata</p></div>
+<div class="c-card" style="padding:1.2rem;text-align:center;"><div class="ci">📊</div><h3>JaCoCo</h3><p>Couverture OK</p></div>
+</div>
+</section>
+<div class="divider"></div>
+
+<!-- ═══ CODE ═══ -->
+<section id="code">
+<div class="rv"><div class="sn">05 — Code source</div><div class="st">Classes <em>Java</em></div><div class="sd">Extraits des classes principales du projet.</div></div>
+
+<div class="rv d1">
+<div class="tab-row" id="codeTabs">
+<button class="tab-btn active" data-tab="categorie">Categorie.java</button>
+<button class="tab-btn" data-tab="domaine">Domaine + Implémentations</button>
+<button class="tab-btn" data-tab="typologie">Typologie.java</button>
+</div>
+
+<div id="panel-categorie" class="tab-panel active">
+<div class="code-wrap"><div class="code-top"><span class="code-fn"><span class="code-dt" style="background:var(--accent)"></span> Categorie.java</span><button class="copy-btn" onclick="doCopy('src1')">copier</button></div><div class="code-scroll"><pre id="src1"><span class="kw">public boolean</span> <span class="fn">estCompatible</span>(<span class="tp">Observation</span> obs) {
+    <span class="kw">for</span> (<span class="tp">Caracteristique</span> caracCat : <span class="kw">this</span>.caracteristiques.values()) {
+        <span class="tp">String</span> intitule = caracCat.getIntitule();
+        <span class="cm">// L'observation doit posséder CHAQUE caractéristique requise</span>
+        <span class="kw">if</span> (!obs.aCaracteristique(intitule)) <span class="kw">return false</span>;
+        <span class="tp">Object</span> valeurObs = obs.getValeur(intitule);
+        <span class="tp">Domaine</span> domaineCat = caracCat.getDomaine();
+        <span class="kw">if</span> (!domaineCat.contient(valeurObs)) <span class="kw">return false</span>;
+    }
+    <span class="kw">return true</span>;
+}
+
+<span class="kw">public void</span> <span class="fn">validerHierarchie</span>() <span class="kw">throws</span> <span class="tp">ValidationException</span> {
+    <span class="kw">if</span> (<span class="kw">this</span>.mere != <span class="kw">null</span> && !<span class="kw">this</span>.nomMere.equals(<span class="str">"TOP"</span>)) {
+        <span class="kw">for</span> (<span class="tp">Caracteristique</span> caracMere : mere.getCaracteristiques().values()) {
+            <span class="tp">String</span> intitule = caracMere.getIntitule();
+            <span class="kw">if</span> (caracteristiques.containsKey(intitule)) {
+                <span class="tp">Domaine</span> domaineFille = caracteristiques.get(intitule).getDomaine();
+                <span class="cm">// Le domaine fille DOIT être inclus dans le domaine mère</span>
+                <span class="kw">if</span> (!domaineFille.estInclusDans(caracMere.getDomaine()))
+                    <span class="kw">throw new</span> <span class="tp">ValidationException</span>(<span class="str">"Incohérence: '"</span> + intitule + <span class="str">"'"</span>);
+            }
+        }
+    }
+    <span class="kw">for</span> (<span class="tp">Categorie</span> fille : filles) fille.validerHierarchie();
+}</pre></div></div>
+</div>
+
+<div id="panel-domaine" class="tab-panel">
+<div class="code-wrap"><div class="code-top"><span class="code-fn"><span class="code-dt" style="background:var(--sky)"></span> Domaine.java + implémentations</span><button class="copy-btn" onclick="doCopy('src2')">copier</button></div><div class="code-scroll"><pre id="src2"><span class="kw">public interface</span> <span class="tp">Domaine</span> {
+    <span class="kw">boolean</span> <span class="fn">contient</span>(<span class="tp">Object</span> valeur);
+    <span class="kw">boolean</span> <span class="fn">estInclusDans</span>(<span class="tp">Domaine</span> domaineMere);
+}
+
+<span class="kw">public class</span> <span class="tp">Intervalle</span> <span class="kw">implements</span> <span class="tp">Domaine</span> {
+    <span class="kw">private final double</span> inf, sup;
+
+    <span class="an">@Override</span>
+    <span class="kw">public boolean</span> <span class="fn">contient</span>(<span class="tp">Object</span> valeur) {
+        <span class="kw">if</span> (!(valeur <span class="kw">instanceof</span> <span class="tp">Number</span>)) <span class="kw">return false</span>;
+        <span class="kw">double</span> val = ((<span class="tp">Number</span>) valeur).doubleValue();
+        <span class="kw">return</span> val >= inf && val <= sup;
+    }
+
+    <span class="an">@Override</span>
+    <span class="kw">public boolean</span> <span class="fn">estInclusDans</span>(<span class="tp">Domaine</span> m) {
+        <span class="kw">if</span> (!(m <span class="kw">instanceof</span> <span class="tp">Intervalle</span>)) <span class="kw">return false</span>;
+        <span class="tp">Intervalle</span> mere = (<span class="tp">Intervalle</span>) m;
+        <span class="kw">return</span> mere.getInf() <= inf && mere.getSup() >= sup;
+    }
+}
+
+<span class="kw">public class</span> <span class="tp">Ensemble</span> <span class="kw">implements</span> <span class="tp">Domaine</span> {
+    <span class="kw">private final</span> <span class="tp">Set</span>&lt;<span class="tp">String</span>&gt; elements;
+
+    <span class="an">@Override</span>
+    <span class="kw">public boolean</span> <span class="fn">contient</span>(<span class="tp">Object</span> v) {
+        <span class="kw">return</span> (v <span class="kw">instanceof</span> <span class="tp">String</span>) && elements.contains((<span class="tp">String</span>) v);
+    }
+
+    <span class="an">@Override</span>
+    <span class="kw">public boolean</span> <span class="fn">estInclusDans</span>(<span class="tp">Domaine</span> m) {
+        <span class="kw">return</span> (m <span class="kw">instanceof</span> <span class="tp">Ensemble</span>) && ((<span class="tp">Ensemble</span>) m).getElements().containsAll(elements);
+    }
+}</pre></div></div>
+</div>
+
+<div id="panel-typologie" class="tab-panel">
+<div class="code-wrap"><div class="code-top"><span class="code-fn"><span class="code-dt" style="background:var(--amber)"></span> Typologie.java — classifier()</span><button class="copy-btn" onclick="doCopy('src3')">copier</button></div><div class="code-scroll"><pre id="src3"><span class="kw">public</span> <span class="tp">List</span>&lt;<span class="tp">Categorie</span>&gt; <span class="fn">classifier</span>(<span class="tp">Observation</span> obs) {
+    <span class="tp">List</span>&lt;<span class="tp">Categorie</span>&gt; compatibles = <span class="kw">new</span> <span class="tp">ArrayList</span>&lt;&gt;();
+    <span class="kw">if</span> (racine != <span class="kw">null</span>) classifierRecursif(racine, obs, compatibles);
+    <span class="kw">return</span> compatibles;
+}
+
+<span class="kw">private void</span> <span class="fn">classifierRecursif</span>(<span class="tp">Categorie</span> cat, <span class="tp">Observation</span> obs,
+                                 <span class="tp">List</span>&lt;<span class="tp">Categorie</span>&gt; resultats) {
+    <span class="kw">if</span> (cat.estCompatible(obs)) {
+        resultats.add(cat);
+        <span class="cm">// Descente récursive UNIQUEMENT si le parent match</span>
+        <span class="kw">for</span> (<span class="tp">Categorie</span> fille : cat.getFilles())
+            classifierRecursif(fille, obs, resultats);
+    }
+    <span class="cm">// Si le parent ne match pas, on ne teste pas ses enfants (élagage)</span>
+}</pre></div></div>
+</div>
+</div>
+</section>
+<div class="divider"></div>
+
+<!-- ═══ CONCLUSION ═══ -->
+<section id="conclusion">
+<div class="rv"><div class="sn">06 — Conclusion</div><div class="st">Bilan & <em>Perspectives</em></div></div>
+<div class="conc-grid rv d1">
+<div class="conc-card"><div class="cci">✅</div><h3>Architecture propre</h3><p>Interface Domaine + implémentations Intervalle/Ensemble. Pattern Composite sur les catégories.</p></div>
+<div class="conc-card"><div class="cci">🌳</div><h3>2 typologies validées</h3><p>arbres.xml et nuages.xml chargés, validés et classifiés avec succès.</p></div>
+<div class="conc-card"><div class="cci">🧪</div><h3>12 tests, 0 échec</h3><p>Couverture complète des domaines, catégories et typologies avec JUnit 5.</p></div>
+<div class="conc-card"><div class="cci">🚀</div><h3>CI/CD complet</h3><p>Pipeline GitLab : lint, build, tests, couverture JaCoCo, rapport automatique.</p></div>
+</div>
+<div class="authors rv d2">
+<div class="auth-left">
+<div class="a-p"><div class="a-av">AN</div><div><div class="a-nm">Amine Nakrou</div><div class="a-rl">Catégorie, Caractéristique, Domaine</div></div></div>
+<div class="a-p"><div class="a-av">AA</div><div><div class="a-nm">Ahmed Amine Louguid</div><div class="a-rl">Observation, Typologie</div></div></div>
+</div>
+<div class="auth-right">Polytech Lille · IS3<br><strong>Projet CKOALA</strong></div>
+</div>
+</section>
+<footer><p>CKOALA — Classification par Typologies · Polytech Lille IS3 · <a href="mailto:amine.nakrou@polytech-lille.net">Contact</a></p></footer>
+
+<script>
+// ═══ SCROLL BAR ═══
+window.addEventListener('scroll',()=>{const h=document.documentElement.scrollHeight-window.innerHeight;document.getElementById('scrollBar').style.width=(window.scrollY/h*100)+'%';},{passive:true});
+
+// ═══ HERO TEXT ═══
+(function(){const h1=document.getElementById('heroTitle');if(!h1)return;let idx=0;h1.innerHTML=h1.innerHTML.replace(/>([^<]+)</g,(m,text)=>{return'>'+text.split('').map(ch=>{if(ch===' '||ch==='\n')return ch;return `<span class="char" style="animation-delay:${0.3+idx++*0.025}s">${ch}</span>`;}).join('')+'<';});})();
+
+// ═══ REVEAL ═══
+const rvObs=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('vis');});},{threshold:0.06});
+document.querySelectorAll('.rv').forEach(el=>rvObs.observe(el));
+
+// ═══ TABS ═══
+document.querySelectorAll('#codeTabs .tab-btn').forEach(btn=>{btn.addEventListener('click',()=>{document.querySelectorAll('#codeTabs .tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));document.getElementById('panel-'+btn.dataset.tab)?.classList.add('active');});});
+
+// ═══ COPY ═══
+function doCopy(id){const el=document.getElementById(id);navigator.clipboard.writeText(el.textContent);}
+
+// ═══ TREE DATA ═══
+const TREES = {
+  arbres: {
+    name:'arbre', children:[
+      {name:'conifere', chars:{forme:'{conique}',taille:'[5,40]',ecorce:'{ecailles,fissuree}'}, children:[
+        {name:'epicea', chars:{taille:'[20,30]',aiguilles:'{brosse}'}, children:[]},
+        {name:'sapin', chars:{taille:'[20,35]',aiguilles:'{plate}'}, children:[]},
+        {name:'cedre', chars:{taille:'[15,40]',aiguilles:'{touffes}'}, children:[]},
+      ]},
+      {name:'feuillu', chars:{forme:'{arrondi,retombant,colonnaire}',taille:'[5,35]'}, children:[
+        {name:'chene', chars:{taille:'[15,30]',ecorce:'{fissuree}'}, children:[]},
+        {name:'bouleau', chars:{taille:'[10,25]',ecorce:'{lisse}'}, children:[]},
+      ]}
+    ], chars:{forme:'{conique,arrondi,retombant,colonnaire}',taille:'[5,40]','taille du tronc':'[0.1,3]',ecorce:'{ecailles,fissuree,lisse,liege}'}
+  },
+  nuages: {
+    name:'nuage', children:[
+      {name:'bas', chars:{altitude:'[0,2000]'}, children:[
+        {name:'stratus', chars:{altitude:'[0,1000]'}, children:[]},
+        {name:'cumulus', chars:{altitude:'[500,2000]'}, children:[]},
+      ]},
+      {name:'moyen', chars:{altitude:'[2000,6000]'}, children:[
+        {name:'altostratus', chars:{altitude:'[2000,5000]'}, children:[]},
+        {name:'altocumulus', chars:{altitude:'[2000,6000]'}, children:[]},
+      ]},
+      {name:'haut', chars:{altitude:'[6000,12000]'}, children:[
+        {name:'cirrus', chars:{altitude:'[6000,12000]'}, children:[]},
+      ]}
+    ], chars:{altitude:'[0,12000]'}
+  }
+};
+
+// ═══ INTERACTIVE TREE CANVAS ═══
+let currentTree = 'arbres';
+let treeHover = null;
+
+function switchTree(name){
+  currentTree = name;
+  document.querySelectorAll('.tree-tab').forEach(t=>t.classList.toggle('active',t.textContent.toLowerCase().includes(name.slice(0,4))));
+  drawTree();
+}
+
+const treeCanvas = document.getElementById('treeCanvas');
+const tctx = treeCanvas.getContext('2d');
+let treeNodes = [];
+
+function layoutTree(node, x, y, spread, depth){
+  const n = {x, y, name:node.name, chars:node.chars||{}, children:[], depth};
+  treeNodes.push(n);
+  const count = node.children.length;
+  if(count > 0){
+    const step = spread / Math.max(count - 1, 1);
+    const startX = x - spread / 2;
+    node.children.forEach((child, i) => {
+      const cx = count === 1 ? x : startX + i * step;
+      const cy = y + 90;
+      const cn = layoutTree(child, cx, cy, spread / (count > 1 ? 2 : 1.5), depth+1);
+      n.children.push(cn);
+    });
+  }
+  return n;
+}
+
+function drawTree(){
+  const dpr = window.devicePixelRatio || 1;
+  const rect = treeCanvas.parentElement.getBoundingClientRect();
+  const W = rect.width - 48;
+  treeCanvas.width = W * dpr;
+  treeCanvas.height = 400 * dpr;
+  treeCanvas.style.width = W + 'px';
+  treeCanvas.style.height = '400px';
+  tctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  treeNodes = [];
+  const root = TREES[currentTree];
+  layoutTree(root, W/2, 40, W * 0.7, 0);
+
+  tctx.clearRect(0, 0, W, 400);
+
+  // Draw edges
+  function drawEdges(n){
+    n.children.forEach(c=>{
+      tctx.beginPath();
+      tctx.moveTo(n.x, n.y + 18);
+      tctx.bezierCurveTo(n.x, n.y + 50, c.x, c.y - 30, c.x, c.y - 18);
+      const isHover = treeHover && (treeHover.name === n.name || treeHover.name === c.name);
+      tctx.strokeStyle = isHover ? 'rgba(106,191,94,0.4)' : 'rgba(255,255,255,0.06)';
+      tctx.lineWidth = isHover ? 2 : 1;
+      tctx.stroke();
+      drawEdges(c);
+    });
+  }
+  drawEdges(treeNodes[0]);
+
+  // Draw nodes
+  treeNodes.forEach(n=>{
+    const isH = treeHover && treeHover.name === n.name;
+    const isRoot = n.depth === 0;
+
+    if(isH || isRoot){
+      tctx.beginPath();tctx.arc(n.x,n.y,24,0,Math.PI*2);
+      const g=tctx.createRadialGradient(n.x,n.y,12,n.x,n.y,24);
+      g.addColorStop(0,isRoot?'rgba(106,191,94,0.15)':'rgba(88,160,216,0.12)');
+      g.addColorStop(1,'transparent');tctx.fillStyle=g;tctx.fill();
+    }
+
+    tctx.beginPath();tctx.arc(n.x,n.y,isH?16:14,0,Math.PI*2);
+    const colors = ['rgba(106,191,94,0.8)','rgba(88,160,216,0.7)','rgba(232,184,64,0.6)','rgba(216,104,104,0.5)'];
+    tctx.fillStyle = isH ? 'rgba(106,191,94,0.9)' : colors[Math.min(n.depth, 3)];
+    tctx.fill();
+    tctx.strokeStyle = isH ? 'rgba(106,191,94,0.5)' : 'rgba(255,255,255,0.08)';
+    tctx.lineWidth = 1.5;
+    tctx.stroke();
+
+    tctx.font = `${isH?'600':'500'} ${isH?12:11}px "Instrument Sans"`;
+    tctx.fillStyle = '#f0efe8';
+    tctx.textAlign = 'center';
+    tctx.fillText(n.name, n.x, n.y + 30);
+
+    if(isH && n.chars){
+      const entries = Object.entries(n.chars);
+      entries.forEach(([k,v], i)=>{
+        tctx.font = '400 9px "JetBrains Mono"';
+        tctx.fillStyle = 'rgba(160,168,144,0.8)';
+        tctx.fillText(`${k}: ${v}`, n.x, n.y + 44 + i * 14);
+      });
+    }
+  });
+}
+
+treeCanvas.addEventListener('mousemove', e=>{
+  const rect = treeCanvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  treeHover = null;
+  for(const n of treeNodes){
+    if(Math.sqrt((n.x-mx)**2+(n.y-my)**2) < 20){treeHover = n; break;}
+  }
+  drawTree();
+});
+treeCanvas.addEventListener('mouseleave',()=>{treeHover=null;drawTree();});
+
+// Init tree
+setTimeout(drawTree, 100);
+window.addEventListener('resize', drawTree);
+
+// ═══ CLASSIFIER DEMO ═══
+function runClassifier(){
+  const obs = {
+    forme: document.getElementById('dForme').value,
+    taille: parseFloat(document.getElementById('dTaille').value),
+    'taille du tronc': parseFloat(document.getElementById('dTronc').value),
+    ecorce: document.getElementById('dEcorce').value,
+  };
+  const aig = document.getElementById('dAiguilles').value;
+  if(aig) obs.aiguilles = aig;
+
+  // Simplified tree classification logic
+  const results = [];
+  const tree = TREES.arbres;
+
+  function check(node, obs){
+    // Simple compatibility check
+    let compatible = true;
+    if(node.chars){
+      for(const [k,v] of Object.entries(node.chars)){
+        if(!(k in obs)) { compatible = false; break; }
+        const val = obs[k];
+        if(v.startsWith('[')){
+          const [lo,hi] = v.slice(1,-1).split(',').map(Number);
+          if(typeof val !== 'number' || val < lo || val > hi){ compatible = false; break; }
+        } else if(v.startsWith('{')){
+          const set = v.slice(1,-1).split(',');
+          if(!set.includes(val)){ compatible = false; break; }
+        }
+      }
+    }
+    if(compatible){
+      results.push(node.name);
+      node.children.forEach(c=>check(c, obs));
+    }
+  }
+  check(tree, obs);
+
+  const resEl = document.getElementById('demoResult');
+  if(results.length === 0){
+    resEl.innerHTML = '<h4>Résultats</h4><div class="demo-result-item dri-no"><span class="dri-icon">❌</span> Aucune catégorie compatible</div>';
+  } else {
+    resEl.innerHTML = '<h4>Catégories compatibles (' + results.length + ')</h4>' +
+      results.map(r=>`<div class="demo-result-item dri-match"><span class="dri-icon">✓</span> ${r}</div>`).join('');
+  }
+}
+
+// ═══ ROW STAGGER ═══
+const rowObs=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){e.target.querySelectorAll('tbody tr').forEach((r,i)=>{r.style.opacity='0';r.style.transform='translateX(-6px)';setTimeout(()=>{r.style.transition='all 0.3s var(--tr)';r.style.opacity='1';r.style.transform='none';},i*50);});rowObs.unobserve(e.target);}});},{threshold:0.2});
+document.querySelectorAll('.r-panel').forEach(p=>rowObs.observe(p));
+</script>
+</body>
+</html>
